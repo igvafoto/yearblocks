@@ -1,4 +1,4 @@
-var CACHE_NAME = "yearblocks-v1";
+var CACHE_NAME = "yearblocks-v2";
 var ASSETS = [
   "./",
   "./index.html",
