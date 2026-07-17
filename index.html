@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="YearBlocks">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>YearBlocks · 年度进度</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+:root{
+  --bg:#000;
+  --card:#1C1C1E;
+  --card2:#2C2C2E;
+  --past:#30D158;
+  --past-dim:#248A3D;
+  --today:#FF9F0A;
+  --future:#2C2C2E;
+  --future-dim:#1C1C1E;
+  --text:#FFF;
+  --text-2:#8E8E93;
+  --text-3:#48484A;
+  --accent:#30D158;
+}
+
+html,body{
+  height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif;
+  overscroll-behavior:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+
+.app{
+  display:flex;
+  flex-direction:column;
+  height:100dvh;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+
+/* ===== Header ===== */
+header{
+  flex-shrink:0;
+  padding:12px 20px 8px;
+}
+
+.year-nav{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:28px;
+  margin-bottom:14px;
+}
+
+.nav-btn{
+  width:36px;
+  height:36px;
+  border:none;
+  background:var(--card);
+  color:var(--text-2);
+  border-radius:50%;
+  font-size:22px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform .12s,background .15s;
+  touch-action:manipulation;
+}
+.nav-btn:active{transform:scale(.88);background:var(--card2)}
+.nav-btn.disabled{opacity:.25;pointer-events:none}
+
+.year-display{
+  font-size:34px;
+  font-weight:800;
+  letter-spacing:-1.5px;
+  min-width:110px;
+  text-align:center;
+  transition:color .3s;
+}
+.year-display.current{color:var(--accent)}
+
+.year-sub{
+  text-align:center;
+  font-size:12px;
+  color:var(--text-2);
+  margin-top:-6px;
+  margin-bottom:10px;
+  min-height:17px;
+}
+
+/* Segmented Control */
+.segmented{
+  display:flex;
+  background:var(--card);
+  border-radius:9px;
+  padding:2px;
+  margin:0 auto;
+  width:fit-content;
+}
+.seg-btn{
+  border:none;
+  background:transparent;
+  color:var(--text-2);
+  font-size:13px;
+  font-weight:600;
+  padding:6px 24px;
+  border-radius:7px;
+  cursor:pointer;
+  transition:all .2s;
+  touch-action:manipulation;
+}
+.seg-btn.active{background:var(--card2);color:var(--text)}
+
+/* ===== Main ===== */
+main{
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:12px 16px 8px;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* Year view */
+.year-grid{
+  display:grid;
+  grid-template-columns:repeat(16,1fr);
+  gap:3px;
+  max-width:420px;
+  margin:0 auto;
+}
+
+/* Month view */
+.month-section{margin-bottom:18px}
+.month-label{
+  font-size:13px;
+  font-weight:700;
+  color:var(--text-2);
+  margin-bottom:5px;
+  padding-left:1px;
+  max-width:420px;
+  margin:0 auto 5px;
+}
+.month-label .month-num{color:var(--text);margin-right:4px}
+
+.month-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:3px;
+  max-width:420px;
+  margin:0 auto;
+}
+
+/* Day cell */
+.day-cell{
+  aspect-ratio:1;
+  border-radius:3px;
+  background:var(--future);
+  cursor:pointer;
+  transition:transform .12s;
+  touch-action:manipulation;
+  animation:popIn .25s ease-out both;
+}
+.day-cell.past{background:var(--past)}
+.day-cell.today{
+  background:var(--today);
+  box-shadow:0 0 6px var(--today),0 0 14px rgba(255,159,10,.35);
+  transform:scale(1.2);
+  z-index:1;
+}
+.day-cell.future{background:var(--future)}
+.day-cell.empty{background:transparent;pointer-events:none}
+.day-cell:active{transform:scale(1.4)}
+
+@keyframes popIn{
+  from{opacity:0;transform:scale(0)}
+  to{opacity:1;transform:scale(1)}
+}
+.day-cell.today{animation:popIn .25s ease-out both,todayPulse 2s ease-in-out infinite .3s}
+@keyframes todayPulse{
+  0%,100%{box-shadow:0 0 6px var(--today),0 0 14px rgba(255,159,10,.35)}
+  50%{box-shadow:0 0 10px var(--today),0 0 22px rgba(255,159,10,.5)}
+}
+
+/* ===== Footer ===== */
+footer{
+  flex-shrink:0;
+  padding:10px 20px 14px;
+  border-top:1px solid #1C1C1E;
+}
+
+.stats{
+  display:flex;
+  justify-content:space-around;
+  margin-bottom:10px;
+}
+.stat{text-align:center}
+.stat-num{
+  display:block;
+  font-size:22px;
+  font-weight:800;
+  letter-spacing:-.5px;
+}
+.stat-label{
+  font-size:11px;
+  color:var(--text-2);
+  margin-top:1px;
+}
+.stat:nth-child(1) .stat-num{color:var(--past)}
+.stat:nth-child(2) .stat-num{color:var(--text)}
+.stat:nth-child(3) .stat-num{color:var(--today)}
+
+.progress-bar{
+  height:6px;
+  background:var(--card);
+  border-radius:3px;
+  overflow:hidden;
+  margin-bottom:12px;
+}
+.progress-fill{
+  height:100%;
+  background:linear-gradient(90deg,var(--past),var(--today));
+  border-radius:3px;
+  transition:width .6s ease;
+}
+
+.footer-actions{display:flex;gap:10px}
+.action-btn{
+  flex:1;
+  border:none;
+  background:var(--card);
+  color:var(--accent);
+  font-size:14px;
+  font-weight:600;
+  padding:10px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:transform .12s,background .15s;
+  touch-action:manipulation;
+}
+.action-btn:active{transform:scale(.97);background:var(--card2)}
+
+/* ===== Toast ===== */
+.toast{
+  position:fixed;
+  bottom:110px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:rgba(28,28,30,.95);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  color:var(--text);
+  padding:8px 18px;
+  border-radius:20px;
+  font-size:13px;
+  font-weight:500;
+  opacity:0;
+  transition:all .3s;
+  pointer-events:none;
+  white-space:nowrap;
+  z-index:100;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ===== Export overlay ===== */
+.export-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.92);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  z-index:200;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 20px;
+}
+.export-overlay.show{display:flex}
+.export-overlay img{
+  max-width:100%;
+  max-height:68vh;
+  border-radius:12px;
+  -webkit-touch-callout:default;
+  -webkit-user-select:auto;
+  pointer-events:auto;
+}
+.export-overlay p{
+  color:var(--text-2);
+  font-size:14px;
+  margin-top:16px;
+}
+.export-overlay button{
+  margin-top:16px;
+  border:none;
+  background:var(--card);
+  color:var(--accent);
+  font-size:16px;
+  font-weight:600;
+  padding:12px 48px;
+  border-radius:12px;
+  cursor:pointer;
+}
+
+/* ===== Loading ===== */
+.loading{
+  position:fixed;
+  inset:0;
+  background:var(--bg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:300;
+  transition:opacity .4s;
+}
+.loading.hide{opacity:0;pointer-events:none}
+.loading-text{
+  color:var(--accent);
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:1px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="year-nav">
+      <button class="nav-btn" id="prev-year">&#8249;</button>
+      <h1 class="year-display" id="year-display">2026</h1>
+      <button class="nav-btn" id="next-year">&#8250;</button>
+    </div>
+    <div class="year-sub" id="year-sub"></div>
+    <div class="segmented">
+      <button class="seg-btn active" data-view="year">全年</button>
+      <button class="seg-btn" data-view="month">按月</button>
+    </div>
+  </header>
+  <main id="grid-container"></main>
+  <footer>
+    <div class="stats">
+      <div class="stat"><span class="stat-num" id="days-passed">0</span><span class="stat-label">已过</span></div>
+      <div class="stat"><span class="stat-num" id="days-left">0</span><span class="stat-label">剩余</span></div>
+      <div class="stat"><span class="stat-num" id="percent">0%</span><span class="stat-label">进度</span></div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="footer-actions">
+      <button class="action-btn" id="export-btn">导出图片</button>
+      <button class="action-btn" id="today-btn">回到今天</button>
+    </div>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+<div class="export-overlay" id="export-overlay">
+  <img id="export-img" alt="YearBlocks">
+  <p>长按图片保存到相册</p>
+  <button id="close-export">关闭</button>
+</div>
+<div class="loading" id="loading"><div class="loading-text">YearBlocks</div></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var today=new Date();
+  var currentYear=today.getFullYear();
+  var displayYear=currentYear;
+  var currentView='year';
+  var monthNames=['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  var monthNums=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  var weekDayLabels=['日','一','二','三','四','五','六'];
+
+  function isLeap(y){return(y%4===0&&y%100!==0)||(y%400===0)}
+  function daysInYear(y){return isLeap(y)?366:365}
+  function dayOfYear(d){var s=new Date(d.getFullYear(),0,0);return Math.floor((d-s)/86400000)}
+
+  function getCellState(year,dayIdx){
+    if(year<currentYear)return'past';
+    if(year>currentYear)return'future';
+    var tdy=dayOfYear(today);
+    if(dayIdx<tdy-1)return'past';
+    if(dayIdx===tdy-1)return'today';
+    return'future';
+  }
+
+  function formatDate(year,dayIdx){
+    var d=new Date(year,0,dayIdx+1);
+    return(d.getMonth()+1)+'月'+d.getDate()+'日';
+  }
+
+  function renderYearView(){
+    var c=document.getElementById('grid-container');
+    c.innerHTML='';
+    var grid=document.createElement('div');
+    grid.className='year-grid';
+    var total=daysInYear(displayYear);
+    for(var i=0;i<total;i++){
+      var cell=document.createElement('div');
+      var st=getCellState(displayYear,i);
+      cell.className='day-cell '+st;
+      cell.style.animationDelay=(i*2.5)+'ms';
+      cell.dataset.date=formatDate(displayYear,i);
+      cell.dataset.day=(i+1);
+      grid.appendChild(cell);
+    }
+    c.appendChild(grid);
+    bindCells(grid);
+  }
+
+  function renderMonthView(){
+    var c=document.getElementById('grid-container');
+    c.innerHTML='';
+    var dayOfYearOffset=0;
+    for(var m=0;m<12;m++){
+      var section=document.createElement('div');
+      section.className='month-section';
+
+      var label=document.createElement('div');
+      label.className='month-label';
+      label.innerHTML='<span class="month-num">'+monthNums[m]+'</span>'+monthNames[m];
+      section.appendChild(label);
+
+      var grid=document.createElement('div');
+      grid.className='month-grid';
+
+      var firstDay=new Date(displayYear,m,1).getDay(); // 0=Sun
+      var dim=new Date(displayYear,m+1,0).getDate();
+
+      // Empty cells before 1st
+      for(var e=0;e<firstDay;e++){
+        var empty=document.createElement('div');
+        empty.className='day-cell empty';
+        grid.appendChild(empty);
+      }
+
+      for(var d=0;d<dim;d++){
+        var cell=document.createElement('div');
+        var globalIdx=dayOfYearOffset+d;
+        var st=getCellState(displayYear,globalIdx);
+        cell.className='day-cell '+st;
+        cell.style.animationDelay=(globalIdx*2.5)+'ms';
+        cell.dataset.date=(m+1)+'月'+(d+1)+'日';
+        cell.dataset.day=(globalIdx+1);
+        grid.appendChild(cell);
+      }
+
+      dayOfYearOffset+=dim;
+      section.appendChild(grid);
+      c.appendChild(section);
+    }
+    bindCells(c);
+  }
+
+  function bindCells(container){
+    var cells=container.querySelectorAll('.day-cell:not(.empty)');
+    for(var i=0;i<cells.length;i++){
+      (function(cell){
+        cell.addEventListener('click',function(){
+          showToast(cell.dataset.date+' · 第'+cell.dataset.day+'天');
+        });
+      })(cells[i]);
+    }
+  }
+
+  function render(){
+    if(currentView==='year')renderYearView();
+    else renderMonthView();
+    updateStats();
+    updateNav();
+    updateSub();
+  }
+
+  function updateStats(){
+    var total=daysInYear(displayYear);
+    var passed;
+    if(displayYear<currentYear)passed=total;
+    else if(displayYear>currentYear)passed=0;
+    else passed=dayOfYear(today);
+
+    var left=total-passed;
+    var pct=Math.round((passed/total)*100);
+
+    document.getElementById('days-passed').textContent=passed;
+    document.getElementById('days-left').textContent=left;
+    document.getElementById('percent').textContent=pct+'%';
+    document.getElementById('progress-fill').style.width=pct+'%';
+
+    var yd=document.getElementById('year-display');
+    yd.textContent=displayYear;
+    if(displayYear===currentYear)yd.classList.add('current');
+    else yd.classList.remove('current');
+  }
+
+  function updateNav(){
+    var p=document.getElementById('prev-year');
+    var n=document.getElementById('next-year');
+    if(displayYear<=2000)p.classList.add('disabled');else p.classList.remove('disabled');
+    if(displayYear>=currentYear+10)n.classList.add('disabled');else n.classList.remove('disabled');
+  }
+
+  function updateSub(){
+    var sub=document.getElementById('year-sub');
+    if(displayYear===currentYear){
+      var m=today.getMonth()+1,d=today.getDate();
+      var wk=Math.ceil(dayOfYear(today)/7);
+      sub.textContent='今天是 '+m+'月'+d+'日 · 第'+wk+'周';
+    }else if(displayYear<currentYear){
+      sub.textContent='已过去 '+((currentYear-displayYear))+' 年';
+    }else{
+      sub.textContent='还有 '+(displayYear-currentYear)+' 年';
+    }
+  }
+
+  function showToast(msg){
+    var t=document.getElementById('toast');
+    t.textContent=msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer=setTimeout(function(){t.classList.remove('show')},2000);
+  }
+
+  // ===== Export =====
+  function exportImage(){
+    var loading=document.getElementById('loading');
+    var lt=loading.querySelector('.loading-text');
+    lt.textContent='生成图片中…';
+    loading.classList.remove('hide');
+
+    setTimeout(function(){
+      try{
+        var scale=2;
+        var cols=16;
+        var gap=4;
+        var cellSz=26;
+        var pad=40;
+        var headerH=90;
+        var footerH=90;
+
+        var total=daysInYear(displayYear);
+        var rows=Math.ceil(total/cols);
+        var gridW=cols*cellSz+(cols-1)*gap;
+        var gridH=rows*cellSz+(rows-1)*gap;
+        var W=gridW+pad*2;
+        var H=headerH+gridH+footerH+pad;
+
+        var canvas=document.createElement('canvas');
+        canvas.width=W*scale;
+        canvas.height=H*scale;
+        var ctx=canvas.getContext('2d');
+        ctx.scale(scale,scale);
+
+        // Background
+        ctx.fillStyle='#000';
+        ctx.fillRect(0,0,W,H);
+
+        // Year
+        ctx.fillStyle=displayYear===currentYear?'#30D158':'#FFFFFF';
+        ctx.font='bold 40px -apple-system,Helvetica,sans-serif';
+        ctx.textAlign='left';
+        ctx.textBaseline='top';
+        ctx.fillText(String(displayYear),pad,pad);
+
+        // Subtitle
+        var subText='';
+        if(displayYear===currentYear){
+          var m=today.getMonth()+1,d=today.getDate();
+          subText='今天是 '+m+'月'+d+'日';
+        }else if(displayYear<currentYear){
+          subText='已过去 '+(currentYear-displayYear)+' 年';
+        }else{
+          subText='还有 '+(displayYear-currentYear)+' 年';
+        }
+        ctx.fillStyle='#8E8E93';
+        ctx.font='15px -apple-system,Helvetica,sans-serif';
+        ctx.fillText(subText,pad,pad+46);
+
+        // Grid
+        var gridY=pad+headerH;
+        for(var i=0;i<total;i++){
+          var r=Math.floor(i/cols);
+          var col=i%cols;
+          var x=pad+col*(cellSz+gap);
+          var y=gridY+r*(cellSz+gap);
+          var st=getCellState(displayYear,i);
+
+          ctx.save();
+          if(st==='today'){
+            ctx.shadowColor='#FF9F0A';
+            ctx.shadowBlur=12;
+            ctx.fillStyle='#FF9F0A';
+          }else if(st==='past'){
+            ctx.fillStyle='#30D158';
+          }else{
+            ctx.fillStyle='#2C2C2E';
+          }
+          ctx.beginPath();
+          ctx.roundRect?ctx.roundRect(x,y,cellSz,cellSz,3):ctx.rect(x,y,cellSz,cellSz);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Footer stats
+        var passed;
+        if(displayYear<currentYear)passed=total;
+        else if(displayYear>currentYear)passed=0;
+        else passed=dayOfYear(today);
+        var left=total-passed;
+        var pct=Math.round((passed/total)*100);
+        var fy=gridY+gridH+24;
+
+        var colW=gridW/3;
+        ctx.textAlign='center';
+        ctx.font='bold 22px -apple-system,Helvetica,sans-serif';
+        ctx.fillStyle='#30D158';
+        ctx.fillText(passed+'天',pad+colW*0.5,fy);
+        ctx.fillStyle='#FFFFFF';
+        ctx.fillText(left+'天',pad+colW*1.5,fy);
+        ctx.fillStyle='#FF9F0A';
+        ctx.fillText(pct+'%',pad+colW*2.5,fy);
+
+        ctx.fillStyle='#8E8E93';
+        ctx.font='12px -apple-system,Helvetica,sans-serif';
+        ctx.fillText('已过',pad+colW*0.5,fy+28);
+        ctx.fillText('剩余',pad+colW*1.5,fy+28);
+        ctx.fillText('进度',pad+colW*2.5,fy+28);
+
+        // Watermark
+        ctx.fillStyle='#48484A';
+        ctx.font='11px -apple-system,Helvetica,sans-serif';
+        ctx.textAlign='right';
+        ctx.fillText('YearBlocks',W-pad,H-16);
+
+        var dataUrl=canvas.toDataURL('image/png');
+        document.getElementById('export-img').src=dataUrl;
+        document.getElementById('export-overlay').classList.add('show');
+      }catch(e){
+        showToast('导出失败');
+      }
+      loading.classList.add('hide');
+      lt.textContent='YearBlocks';
+    },100);
+  }
+
+  // ===== Swipe gesture =====
+  var touchSX=0,touchSY=0;
+  var mainEl=document.getElementById('grid-container');
+  mainEl.addEventListener('touchstart',function(e){
+    touchSX=e.changedTouches[0].screenX;
+    touchSY=e.changedTouches[0].screenY;
+  },{passive:true});
+  mainEl.addEventListener('touchend',function(e){
+    var dx=e.changedTouches[0].screenX-touchSX;
+    var dy=e.changedTouches[0].screenY-touchSY;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.8){
+      if(dx>0){displayYear--;render();}
+      else{displayYear++;render();}
+    }
+  },{passive:true});
+
+  // ===== Events =====
+  document.getElementById('prev-year').addEventListener('click',function(){displayYear--;render();});
+  document.getElementById('next-year').addEventListener('click',function(){displayYear++;render();});
+  document.getElementById('today-btn').addEventListener('click',function(){
+    displayYear=currentYear;render();showToast('已回到 '+currentYear);
+  });
+
+  var segBtns=document.querySelectorAll('.seg-btn');
+  for(var i=0;i<segBtns.length;i++){
+    segBtns[i].addEventListener('click',function(){
+      for(var j=0;j<segBtns.length;j++)segBtns[j].classList.remove('active');
+      this.classList.add('active');
+      currentView=this.dataset.view;
+      render();
+    });
+  }
+
+  document.getElementById('export-btn').addEventListener('click',exportImage);
+  document.getElementById('close-export').addEventListener('click',function(){
+    document.getElementById('export-overlay').classList.remove('show');
+  });
+
+  // ===== Init =====
+  render();
+  setTimeout(function(){
+    document.getElementById('loading').classList.add('hide');
+  },500);
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  }
+})();
+</script>
+</body>
+</html>
