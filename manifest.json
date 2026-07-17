@@ -1,12 +1,12 @@
 {
   "name": "YearBlocks · 年度进度",
   "short_name": "YearBlocks",
-  "description": "用方块看一年的进度，过去的日子绿色，未来的深灰色",
+  "description": "用方块看一年的进度，莫兰迪配色，低饱和高级感",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#E8E4DF",
+  "theme_color": "#E8E4DF",
   "icons": [
     {
       "src": "icon-192.png",
